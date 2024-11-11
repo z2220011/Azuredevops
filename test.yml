@@ -1,0 +1,13 @@
+trigger:
+- main
+parameters:
+  - name: message
+    displayName: 'Enter your message'
+    type: string
+    default: '世界'  # デフォルトの値として"世界"を設定
+pool:
+  vmImage: 'ubuntu-latest'
+steps:
+- script: |
+    echo "こんにちは！${{ parameters.message }}"
+  displayName: 'Display Custom Greeting Message'
