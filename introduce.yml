@@ -1,0 +1,28 @@
+trigger:
+  branches:
+    include:
+      - main  # mainブランチへのプッシュでトリガー
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  USER_NAME: ''  # 実行時に入力される変数
+
+steps:
+  # Python環境をセットアップ
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.x'
+
+  # 必要なパッケージをインストール
+  - script: |
+      python3 -m venv venv
+      source venv/bin/activate
+      pip install boto3
+    displayName: 'Setup Python environment'
+
+  # Pythonスクリプトを実行
+  - script: |
+      python3 introduce.py
+    displayName: 'Run Python script to generate introduction'
