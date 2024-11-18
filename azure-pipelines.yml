@@ -7,27 +7,24 @@ pool:
 variables:
   SOURCE_FILE: 'source_file.yml'  # 元のYAMLファイル名
   OUTPUT_FILE: 'replaced_file.yml'  # 出力ファイル名
-  TENANT_ID_VALUE: '置換後のtenant_id'  # tenant_idの置換後の値
-  CLIENT_SECRET_VALUE: '置換後のclient_secret'  # client_secretの置換後の値
-  CLIENT_ID_VALUE: '置換後のclient_id'  # client_idの置換後の値
 
 steps:
   - checkout: self  # GitHubからファイルをチェックアウト
 
+  # 値を受け取って置換処理を実行
   - script: |
+      echo "置換を開始します"
+
       # ファイルのコピーを作成
       cp $(SOURCE_FILE) $(OUTPUT_FILE)
 
-      # tenant_idの値を置換
-      sed -i "/name: tenant_id/{n;s/value:.*/value: '$(TENANT_ID_VALUE)'/}" $(OUTPUT_FILE)
-      
-      # client_secretの値を置換
-      sed -i "/name: client_secret/{n;s/value:.*/value: '$(CLIENT_SECRET_VALUE)'/}" $(OUTPUT_FILE)
+      # ユーザー入力の値を用いて置換
+      sed -i "/name: tenant_id/{n;s/value:.*/value: '$(tenant_id)'/}" $(OUTPUT_FILE)
+      sed -i "/name: client_secret/{n;s/value:.*/value: '$(client_secret)'/}" $(OUTPUT_FILE)
+      sed -i "/name: client_id/{n;s/value:.*/value: '$(client_id)'/}" $(OUTPUT_FILE)
+    displayName: 'YAMLファイルの置換'
 
-      # client_idの値を置換
-      sed -i "/name: client_id/{n;s/value:.*/value: '$(CLIENT_ID_VALUE)'/}" $(OUTPUT_FILE)
-    displayName: 'YAMLファイルの値を置換'
-
+  # アーティファクトとして保存
   - task: PublishPipelineArtifact@1
     inputs:
       targetPath: '$(OUTPUT_FILE)'
