@@ -1,25 +1,35 @@
 trigger:
-  - main  # main ブランチの変更をトリガー
+  - main  # mainブランチの更新時に実行
 
 pool:
-  vmImage: 'ubuntu-latest'  # Linux エージェントを使用
+  vmImage: 'ubuntu-latest'  # Linuxエージェントを使用
 
 variables:
-  SOURCE_FILE: 'source_file.yml'  # GitHub リポジトリ内のファイル
-  OUTPUT_FILE: 'replaced_file.yml'  # 出力する新しいファイル名
-  OLD_TEXT: 'test'  # 置換対象の文字列
-  NEW_TEXT: '置換成功'  # 置換後の文字列
+  SOURCE_FILE: 'source_file.yml'  # 元のYAMLファイル名
+  OUTPUT_FILE: 'replaced_file.yml'  # 出力ファイル名
+  TENANT_ID_VALUE: '置換後のtenant_id'  # tenant_idの置換後の値
+  CLIENT_SECRET_VALUE: '置換後のclient_secret'  # client_secretの置換後の値
+  CLIENT_ID_VALUE: '置換後のclient_id'  # client_idの置換後の値
 
 steps:
+  - checkout: self  # GitHubからファイルをチェックアウト
+
   - script: |
-      # 元ファイルのコピーを作成
+      # ファイルのコピーを作成
       cp $(SOURCE_FILE) $(OUTPUT_FILE)
-      # 文字列を置換
-      sed -i "s/$(OLD_TEXT)/$(NEW_TEXT)/g" $(OUTPUT_FILE)
-    displayName: '文字列置換とファイル出力'
-    
-  - task: PublishPipelineArtifact@1  # 置換後のファイルをアーティファクトとして保存
+
+      # tenant_idの値を置換
+      sed -i "/name: tenant_id/{n;s/value:.*/value: '$(TENANT_ID_VALUE)'/}" $(OUTPUT_FILE)
+      
+      # client_secretの値を置換
+      sed -i "/name: client_secret/{n;s/value:.*/value: '$(CLIENT_SECRET_VALUE)'/}" $(OUTPUT_FILE)
+
+      # client_idの値を置換
+      sed -i "/name: client_id/{n;s/value:.*/value: '$(CLIENT_ID_VALUE)'/}" $(OUTPUT_FILE)
+    displayName: 'YAMLファイルの値を置換'
+
+  - task: PublishPipelineArtifact@1
     inputs:
       targetPath: '$(OUTPUT_FILE)'
-      artifactName: 'replacedFile'
-    displayName: '出力ファイルをアーティファクトとして公開'
+      artifactName: 'ReplacedYAML'
+    displayName: '置換後のファイルをアーティファクトとして保存'
