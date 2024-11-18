@@ -7,8 +7,8 @@ pool:
 variables:
   SOURCE_FILE: 'source_file.yml'  # GitHub リポジトリ内のファイル
   OUTPUT_FILE: 'replaced_file.yml'  # 出力する新しいファイル名
-  OLD_TEXT: '置換前'  # 置換対象の文字列
-  NEW_TEXT: '置換後'  # 置換後の文字列
+  OLD_TEXT: 'test'  # 置換対象の文字列
+  NEW_TEXT: '置換成功'  # 置換後の文字列
 
 steps:
   - script: |
