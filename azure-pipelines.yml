@@ -1,32 +1,72 @@
 trigger:
-  - main  # mainブランチの更新時に実行
+  - main  # mainブランチ更新時に実行
 
 pool:
   vmImage: 'ubuntu-latest'  # Linuxエージェントを使用
 
 variables:
-  SOURCE_FILE: 'source_file.yml'  # 元のYAMLファイル名
-  OUTPUT_FILE: 'replaced_file.yml'  # 出力ファイル名
+  SOURCE_FILE: 'source_file.yml'  # 元のYAMLファイル
+  OUTPUT_FILE: 'replaced_file.yml'  # 出力ファイル
+  STORAGE_ACCOUNT: '<YourStorageAccountName>'  # Azure Storageアカウント名
+  CONTAINER_NAME: 'replaced-files'  # Blob Storageのコンテナ名
+  BLOB_NAME: 'replaced_file.yml'  # アップロード後のファイル名
+  RESOURCE_GROUP: '<YourResourceGroup>'  # Azureリソースグループ名
 
 steps:
-  - checkout: self  # GitHubからファイルをチェックアウト
+  - checkout: self  # GitHubのリポジトリをチェックアウト
 
-  # 値を受け取って置換処理を実行
+  # Key Vaultからclient_secretを取得
+  - task: AzureKeyVault@1
+    inputs:
+      azureSubscription: 'azure-blob-connection'  # サービス接続名
+      KeyVaultName: 'myKeyVault'  # Key Vault 名
+      SecretsFilter: 'client_secret'  # 取得するシークレット名
+      RunAsPreJob: false
+    displayName: 'Key Vaultからclient_secretを取得'
+
+  # ファイルの置換処理
   - script: |
       echo "置換を開始します"
 
-      # ファイルのコピーを作成
+      # Key Vaultから取得したシークレットを環境変数として取得
+      CLIENT_SECRET_ENV_VAR=$(client_secret)
+
+      # コピーして置換を実行
       cp $(SOURCE_FILE) $(OUTPUT_FILE)
-
-      # ユーザー入力の値を用いて置換
       sed -i "/name: tenant_id/{n;s/value:.*/value: '$(tenant_id)'/}" $(OUTPUT_FILE)
-      sed -i "/name: client_secret/{n;s/value:.*/value: '$(client_secret)'/}" $(OUTPUT_FILE)
+      sed -i "/name: client_secret/{n;s/value:.*/value: '$CLIENT_SECRET_ENV_VAR'/}" $(OUTPUT_FILE)
       sed -i "/name: client_id/{n;s/value:.*/value: '$(client_id)'/}" $(OUTPUT_FILE)
-    displayName: 'YAMLファイルの置換'
+    displayName: 'YAMLファイルを置換'
 
-  # アーティファクトとして保存
-  - task: PublishPipelineArtifact@1
+  # Azure CLIタスクでファイルをBlobにアップロード
+  - task: AzureCLI@2
     inputs:
-      targetPath: '$(OUTPUT_FILE)'
-      artifactName: 'ReplacedYAML'
-    displayName: '置換後のファイルをアーティファクトとして保存'
+      azureSubscription: 'azure-blob-connection'  # 作成したサービス接続
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        echo "Azure Blob Storageにアップロードを開始します"
+        # ストレージアカウントキーを取得
+        STORAGE_KEY=$(az storage account keys list \
+          --resource-group $(RESOURCE_GROUP) \
+          --account-name $(STORAGE_ACCOUNT) \
+          --query [0].value -o tsv)
+
+        # Blob Storageにアップロード
+        az storage blob upload \
+          --account-name $(STORAGE_ACCOUNT) \
+          --account-key $STORAGE_KEY \
+          --container-name $(CONTAINER_NAME) \
+          --name $(BLOB_NAME) \
+          --file $(OUTPUT_FILE)
+
+        # Blob URLを生成
+        BLOB_URL="https://${STORAGE_ACCOUNT}.blob.core.windows.net/${CONTAINER_NAME}/${BLOB_NAME}"
+        echo "Blob URL: $BLOB_URL"
+        echo "##vso[task.setvariable variable=blob_url]$BLOB_URL"
+    displayName: 'Blob Storageにアップロード'
+
+  # アップロードしたBlob URLを出力
+  - script: |
+      echo "アップロードされたBlob URL: $(blob_url)"
+    displayName: 'Blob URLを出力'
