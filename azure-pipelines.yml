@@ -12,36 +12,39 @@ variables:
   BLOB_NAME: 'replaced_file.yml'  # アップロード後のファイル名
   RESOURCE_GROUP: '<YourResourceGroup>'  # Azureリソースグループ名
 
+  # Azure DevOps Libraryからの変数
+  - group: SecretsGroup  # Libraryに定義したVariable Groupの名前
+
 steps:
   - checkout: self  # GitHubのリポジトリをチェックアウト
 
-  # Key Vaultからclient_secretを取得
-  - task: AzureKeyVault@1
-    inputs:
-      azureSubscription: 'azure-blob-connection'  # サービス接続名
-      KeyVaultName: 'myKeyVault'  # Key Vault 名
-      SecretsFilter: 'client_secret'  # 取得するシークレット名
-      RunAsPreJob: false
-    displayName: 'Key Vaultからclient_secretを取得'
+  # tenant_id と client_id をファイルから抽出
+  - script: |
+      echo "置換対象ファイルから変数を抽出しています..."
+      TENANT_ID=$(grep -A 1 'name: tenant_id' $(SOURCE_FILE) | grep 'value:' | awk '{print $2}' | tr -d "'")
+      CLIENT_ID=$(grep -A 1 'name: client_id' $(SOURCE_FILE) | grep 'value:' | awk '{print $2}' | tr -d "'")
+      echo "抽出された tenant_id: $TENANT_ID"
+      echo "抽出された client_id: $CLIENT_ID"
+
+      # 環境変数として設定
+      echo "##vso[task.setvariable variable=tenant_id]$TENANT_ID"
+      echo "##vso[task.setvariable variable=client_id]$CLIENT_ID"
+    displayName: 'tenant_id と client_id を抽出'
 
   # ファイルの置換処理
   - script: |
-      echo "置換を開始します"
-
-      # Key Vaultから取得したシークレットを環境変数として取得
-      CLIENT_SECRET_ENV_VAR=$(client_secret)
-
-      # コピーして置換を実行
-      cp $(SOURCE_FILE) $(OUTPUT_FILE)
+      echo "YAMLファイルを置換しています..."
+      cp $(SOURCE_FILE) $(OUTPUT_FILE)  # 元ファイルをコピー
       sed -i "/name: tenant_id/{n;s/value:.*/value: '$(tenant_id)'/}" $(OUTPUT_FILE)
-      sed -i "/name: client_secret/{n;s/value:.*/value: '$CLIENT_SECRET_ENV_VAR'/}" $(OUTPUT_FILE)
+      sed -i "/name: client_secret/{n;s/value:.*/value: '$(client_secret)'/}" $(OUTPUT_FILE)
       sed -i "/name: client_id/{n;s/value:.*/value: '$(client_id)'/}" $(OUTPUT_FILE)
+      echo "置換が完了しました。"
     displayName: 'YAMLファイルを置換'
 
   # Azure CLIタスクでファイルをBlobにアップロード
   - task: AzureCLI@2
     inputs:
-      azureSubscription: 'azure-blob-connection'  # 作成したサービス接続
+      azureSubscription: 'azure-blob-connection'  # 作成したサービス接続名
       scriptType: 'bash'
       scriptLocation: 'inlineScript'
       inlineScript: |
