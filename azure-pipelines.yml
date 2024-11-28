@@ -13,7 +13,7 @@ variables:
   RESOURCE_GROUP: '<YourResourceGroup>'  # Azureリソースグループ名
 
   # Azure DevOps Libraryからの変数
-  - group: SecretsGroup  # Libraryに定義したVariable Groupの名前
+  - group: ishimaru # Libraryに定義したVariable Groupの名前
 
 steps:
   - checkout: self  # GitHubのリポジトリをチェックアウト
