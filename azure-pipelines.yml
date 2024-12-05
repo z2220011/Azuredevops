@@ -1,80 +1,52 @@
 trigger:
   branches:
     include:
-      - main  # mainブランチの更新をトリガー
+      - main  # mainブランチの変更時にパイプラインを実行
   paths:
     include:
-      - source_file.yml  # source_file.yml の変更時のみトリガー
+      - source_file.yml  # source_file.ymlが変更された場合にのみ実行
 
 pool:
   vmImage: 'ubuntu-latest'  # Linuxエージェントを使用
 
 variables:
+  - group: ishimaru  # Azure DevOps Libraryで定義したVariable Group名
   SOURCE_FILE: 'source_file.yml'  # 元のYAMLファイル
-  OUTPUT_FILE: 'replaced_file.yml'  # 出力ファイル
-  STORAGE_ACCOUNT: '<YourStorageAccountName>'  # Azure Storageアカウント名
-  CONTAINER_NAME: 'replaced-files'  # Blob Storageのコンテナ名
-  BLOB_NAME: 'replaced_file.yml'  # アップロード後のファイル名
-  RESOURCE_GROUP: '<YourResourceGroup>'  # Azureリソースグループ名
-
-  # Azure DevOps Libraryからの変数
-  - group: ishimaru  # Libraryに定義したVariable Groupの名前
+  OUTPUT_FILE: 'replaced_file.yml'  # 置換後の出力ファイル
 
 steps:
-  - checkout: self  # GitHubのリポジトリをチェックアウト
+  - checkout: self  # GitHubリポジトリをチェックアウト
 
-  # tenant_id と client_id をファイルから抽出
+  # tenant_id と client_id を抽出
   - script: |
       echo "置換対象ファイルから変数を抽出しています..."
       TENANT_ID=$(grep -A 1 'name: tenant_id' $SOURCE_FILE | grep 'value:' | awk '{print $2}' | tr -d "'")
       CLIENT_ID=$(grep -A 1 'name: client_id' $SOURCE_FILE | grep 'value:' | awk '{print $2}' | tr -d "'")
       echo "抽出された tenant_id: $TENANT_ID"
       echo "抽出された client_id: $CLIENT_ID"
-
       # 環境変数として設定
       echo "##vso[task.setvariable variable=tenant_id]$TENANT_ID"
       echo "##vso[task.setvariable variable=client_id]$CLIENT_ID"
     displayName: 'tenant_id と client_id を抽出'
 
-  # ファイルの置換処理
+  # YAMLファイルの置換処理
   - script: |
       echo "YAMLファイルを置換しています..."
       cp $SOURCE_FILE $OUTPUT_FILE  # 元ファイルをコピー
       sed -i "/name: tenant_id/{n;s/value:.*/value: '$(tenant_id)'/}" $OUTPUT_FILE
       sed -i "/name: client_secret/{n;s/value:.*/value: '$(client_secret)'/}" $OUTPUT_FILE
       sed -i "/name: client_id/{n;s/value:.*/value: '$(client_id)'/}" $OUTPUT_FILE
-      echo "置換が完了しました。"
+      echo "置換後のファイル内容:"
+      cat $OUTPUT_FILE  # 置換後の内容を表示
     displayName: 'YAMLファイルを置換'
 
-  # Azure CLIタスクでファイルをBlobにアップロード
-  - task: AzureCLI@2
-    inputs:
-      azureSubscription: 'azure-blob-connection'  # 作成したサービス接続名
-      scriptType: 'bash'
-      scriptLocation: 'inlineScript'
-      inlineScript: |
-        echo "Azure Blob Storageにアップロードを開始します"
-        # ストレージアカウントキーを取得
-        STORAGE_KEY=$(az storage account keys list \
-          --resource-group $RESOURCE_GROUP \
-          --account-name $STORAGE_ACCOUNT \
-          --query [0].value -o tsv)
-
-        # Blob Storageにアップロード
-        az storage blob upload \
-          --account-name $STORAGE_ACCOUNT \
-          --account-key $STORAGE_KEY \
-          --container-name $CONTAINER_NAME \
-          --name $BLOB_NAME \
-          --file $OUTPUT_FILE
-
-        # Blob URLを生成
-        BLOB_URL="https://${STORAGE_ACCOUNT}.blob.core.windows.net/${CONTAINER_NAME}/${BLOB_NAME}"
-        echo "Blob URL: $BLOB_URL"
-        echo "##vso[task.setvariable variable=blob_url]$BLOB_URL"
-    displayName: 'Blob Storageにアップロード'
-
-  # アップロードしたBlob URLを出力
+  # 置換後のファイルをリポジトリにコミット（オプション）
   - script: |
-      echo "アップロードされたBlob URL: $(blob_url)"
-    displayName: 'Blob URLを出力'
+      echo "置換後のファイルをコミットしています..."
+      git config user.name "Azure DevOps"
+      git config user.email "devops@example.com"
+      git add $OUTPUT_FILE
+      git commit -m "置換後のファイルをコミット"
+      git push origin main
+    displayName: '置換後のファイルをリポジトリにコミット'
+    condition: always()  # 実行成功・失敗に関わらず実行
