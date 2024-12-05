@@ -2,7 +2,7 @@ environment_variables:
 - description: ''
   id: dcc0bc85-ce43-459f-afd4-0d3c8622e52d
   name: tenant_id
-  value: ''
+  value: '35353'
   value_type: secret
 - description: ''
   id: 6f8f55ba-676a-4d94-a5f8-3a36d53c9faa
@@ -12,5 +12,5 @@ environment_variables:
 - description: ''
   id: d7f6062c-29f7-47bf-ab8f-f3a9256bf831
   name: client_id
-  value: ''
+  value: '43535'
   value_type: secret
