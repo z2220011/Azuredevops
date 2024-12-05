@@ -1,5 +1,10 @@
 trigger:
-  - main  # mainブランチ更新時に実行
+  branches:
+    include:
+      - main  # mainブランチの更新をトリガー
+  paths:
+    include:
+      - source_file.yml  # source_file.yml の変更時のみトリガー
 
 pool:
   vmImage: 'ubuntu-latest'  # Linuxエージェントを使用
@@ -13,7 +18,7 @@ variables:
   RESOURCE_GROUP: '<YourResourceGroup>'  # Azureリソースグループ名
 
   # Azure DevOps Libraryからの変数
-  - group: ishimaru # Libraryに定義したVariable Groupの名前
+  - group: ishimaru  # Libraryに定義したVariable Groupの名前
 
 steps:
   - checkout: self  # GitHubのリポジトリをチェックアウト
@@ -21,8 +26,8 @@ steps:
   # tenant_id と client_id をファイルから抽出
   - script: |
       echo "置換対象ファイルから変数を抽出しています..."
-      TENANT_ID=$(grep -A 1 'name: tenant_id' $(SOURCE_FILE) | grep 'value:' | awk '{print $2}' | tr -d "'")
-      CLIENT_ID=$(grep -A 1 'name: client_id' $(SOURCE_FILE) | grep 'value:' | awk '{print $2}' | tr -d "'")
+      TENANT_ID=$(grep -A 1 'name: tenant_id' $SOURCE_FILE | grep 'value:' | awk '{print $2}' | tr -d "'")
+      CLIENT_ID=$(grep -A 1 'name: client_id' $SOURCE_FILE | grep 'value:' | awk '{print $2}' | tr -d "'")
       echo "抽出された tenant_id: $TENANT_ID"
       echo "抽出された client_id: $CLIENT_ID"
 
@@ -34,10 +39,10 @@ steps:
   # ファイルの置換処理
   - script: |
       echo "YAMLファイルを置換しています..."
-      cp $(SOURCE_FILE) $(OUTPUT_FILE)  # 元ファイルをコピー
-      sed -i "/name: tenant_id/{n;s/value:.*/value: '$(tenant_id)'/}" $(OUTPUT_FILE)
-      sed -i "/name: client_secret/{n;s/value:.*/value: '$(client_secret)'/}" $(OUTPUT_FILE)
-      sed -i "/name: client_id/{n;s/value:.*/value: '$(client_id)'/}" $(OUTPUT_FILE)
+      cp $SOURCE_FILE $OUTPUT_FILE  # 元ファイルをコピー
+      sed -i "/name: tenant_id/{n;s/value:.*/value: '$(tenant_id)'/}" $OUTPUT_FILE
+      sed -i "/name: client_secret/{n;s/value:.*/value: '$(client_secret)'/}" $OUTPUT_FILE
+      sed -i "/name: client_id/{n;s/value:.*/value: '$(client_id)'/}" $OUTPUT_FILE
       echo "置換が完了しました。"
     displayName: 'YAMLファイルを置換'
 
@@ -51,17 +56,17 @@ steps:
         echo "Azure Blob Storageにアップロードを開始します"
         # ストレージアカウントキーを取得
         STORAGE_KEY=$(az storage account keys list \
-          --resource-group $(RESOURCE_GROUP) \
-          --account-name $(STORAGE_ACCOUNT) \
+          --resource-group $RESOURCE_GROUP \
+          --account-name $STORAGE_ACCOUNT \
           --query [0].value -o tsv)
 
         # Blob Storageにアップロード
         az storage blob upload \
-          --account-name $(STORAGE_ACCOUNT) \
+          --account-name $STORAGE_ACCOUNT \
           --account-key $STORAGE_KEY \
-          --container-name $(CONTAINER_NAME) \
-          --name $(BLOB_NAME) \
-          --file $(OUTPUT_FILE)
+          --container-name $CONTAINER_NAME \
+          --name $BLOB_NAME \
+          --file $OUTPUT_FILE
 
         # Blob URLを生成
         BLOB_URL="https://${STORAGE_ACCOUNT}.blob.core.windows.net/${CONTAINER_NAME}/${BLOB_NAME}"
