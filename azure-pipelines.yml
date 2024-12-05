@@ -11,8 +11,10 @@ pool:
 
 variables:
   - group: ishimaru  # Azure DevOps Libraryで定義したVariable Group名
-  SOURCE_FILE: 'source_file.yml'  # 元のYAMLファイル
-  OUTPUT_FILE: 'replaced_file.yml'  # 置換後の出力ファイル
+  - name: SOURCE_FILE
+    value: 'source_file.yml'  # 元のYAMLファイル
+  - name: OUTPUT_FILE
+    value: 'replaced_file.yml'  # 置換後の出力ファイル
 
 steps:
   - checkout: self  # GitHubリポジトリをチェックアウト
@@ -20,8 +22,8 @@ steps:
   # tenant_id と client_id を抽出
   - script: |
       echo "置換対象ファイルから変数を抽出しています..."
-      TENANT_ID=$(grep -A 1 'name: tenant_id' $SOURCE_FILE | grep 'value:' | awk '{print $2}' | tr -d "'")
-      CLIENT_ID=$(grep -A 1 'name: client_id' $SOURCE_FILE | grep 'value:' | awk '{print $2}' | tr -d "'")
+      TENANT_ID=$(grep -A 1 'name: tenant_id' $(SOURCE_FILE) | grep 'value:' | awk '{print $2}' | tr -d "'")
+      CLIENT_ID=$(grep -A 1 'name: client_id' $(SOURCE_FILE) | grep 'value:' | awk '{print $2}' | tr -d "'")
       echo "抽出された tenant_id: $TENANT_ID"
       echo "抽出された client_id: $CLIENT_ID"
       # 環境変数として設定
@@ -32,21 +34,10 @@ steps:
   # YAMLファイルの置換処理
   - script: |
       echo "YAMLファイルを置換しています..."
-      cp $SOURCE_FILE $OUTPUT_FILE  # 元ファイルをコピー
-      sed -i "/name: tenant_id/{n;s/value:.*/value: '$(tenant_id)'/}" $OUTPUT_FILE
-      sed -i "/name: client_secret/{n;s/value:.*/value: '$(client_secret)'/}" $OUTPUT_FILE
-      sed -i "/name: client_id/{n;s/value:.*/value: '$(client_id)'/}" $OUTPUT_FILE
+      cp $(SOURCE_FILE) $(OUTPUT_FILE)  # 元ファイルをコピー
+      sed -i "/name: tenant_id/{n;s/value:.*/value: '$(tenant_id)'/}" $(OUTPUT_FILE)
+      sed -i "/name: client_secret/{n;s/value:.*/value: '$(client_secret)'/}" $(OUTPUT_FILE)
+      sed -i "/name: client_id/{n;s/value:.*/value: '$(client_id)'/}" $(OUTPUT_FILE)
       echo "置換後のファイル内容:"
-      cat $OUTPUT_FILE  # 置換後の内容を表示
+      cat $(OUTPUT_FILE)  # 置換後の内容を表示
     displayName: 'YAMLファイルを置換'
-
-  # 置換後のファイルをリポジトリにコミット（オプション）
-  - script: |
-      echo "置換後のファイルをコミットしています..."
-      git config user.name "Azure DevOps"
-      git config user.email "devops@example.com"
-      git add $OUTPUT_FILE
-      git commit -m "置換後のファイルをコミット"
-      git push origin main
-    displayName: '置換後のファイルをリポジトリにコミット'
-    condition: always()  # 実行成功・失敗に関わらず実行
