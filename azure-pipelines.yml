@@ -1,7 +1,7 @@
 trigger:
   branches:
     include:
-      - main  # mainブランチの変更時にパイプラインを実行
+      - main  # mainブランチが変更されたときにパイプラインを実行
   paths:
     include:
       - source_file.yml  # source_file.ymlが変更された場合にのみ実行
@@ -41,3 +41,11 @@ steps:
       echo "置換後のファイル内容:"
       cat $(OUTPUT_FILE)  # 置換後の内容を表示
     displayName: 'YAMLファイルを置換'
+
+  # 置換後のファイルをartifactとして保存
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: '$(OUTPUT_FILE)'  # 置換後のファイル
+      ArtifactName: 'replaced-files'  # artifact名
+      publishLocation: 'Container'  # Artifactの保存先
+    displayName: 'Artifactとして置換後のファイルを保存'
