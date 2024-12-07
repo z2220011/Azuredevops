@@ -2,7 +2,7 @@ environment_variables:
   - description: ''
     id: dcc0bc85-ce43-459f-afd4-0d3c8622e52d
     name: tenant_id
-    value: ''
+    value: 'xxx'
     value_type: secret
   - description: ''
     id: 6f8f55ba-676a-4d94-a5f8-3a36d53c9faa
