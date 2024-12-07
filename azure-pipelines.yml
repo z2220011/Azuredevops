@@ -10,6 +10,7 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
+  - group: ishimaru
   - name: SOURCE_FILE
     value: 'source_file.yml'
   - name: VARIABLES_FILE
@@ -20,26 +21,21 @@ variables:
 steps:
   - checkout: self
 
-  # デバッグ: variables.yml の内容を確認
+  # 実行サーバーのIPアドレスを表示
   - script: |
-      echo "variables.yml の内容を確認:"
-      cat ${VARIABLES_FILE}
-    displayName: 'variables.yml のデバッグ'
+      set -e
+      echo "実行サーバーのIPアドレスを取得しています..."
+      curl -s http://checkip.amazonaws.com
+    displayName: '実行サーバーのIPアドレスを表示'
 
   # variables.yml から tenant_id と client_id を抽出
   - script: |
       set -e
       echo "variables.yml から変数を抽出しています..."
-      
-      # tenant_id と client_id を抽出
-      TENANT_ID=$(awk '/name: tenant_id/ {getline; print $2}' ${VARIABLES_FILE} | tr -d "'")
-      CLIENT_ID=$(awk '/name: client_id/ {getline; print $2}' ${VARIABLES_FILE} | tr -d "'")
-      
-      # デバッグ用ログ
+      TENANT_ID=$(grep 'name: tenant_id' -A 1 ${VARIABLES_FILE} | grep 'value:' | awk '{print $2}' | tr -d "'")
+      CLIENT_ID=$(grep 'name: client_id' -A 1 ${VARIABLES_FILE} | grep 'value:' | awk '{print $2}' | tr -d "'")
       echo "抽出された tenant_id: ${TENANT_ID}"
       echo "抽出された client_id: ${CLIENT_ID}"
-      
-      # 環境変数として設定
       echo "##vso[task.setvariable variable=tenant_id]${TENANT_ID}"
       echo "##vso[task.setvariable variable=client_id]${CLIENT_ID}"
     displayName: 'variables.yml から tenant_id と client_id を抽出'
@@ -48,24 +44,13 @@ steps:
   - script: |
       set -e
       echo "YAMLファイルを置換しています..."
-
-      # 環境変数を取得
-      echo "置換する tenant_id: $(tenant_id)"
-      echo "置換する client_id: $(client_id)"
-      
-      # ファイルコピー
       cp ${SOURCE_FILE} ${OUTPUT_FILE}
-      
-      # sed で変数を置換
-      sed -i "/name: tenant_id/{n;s/value:.*/value: '$(echo "${tenant_id}" | sed 's/[\/&]/\\&/g')'/}" ${OUTPUT_FILE} || { echo "tenant_id の置換に失敗しました"; exit 1; }
-      sed -i "/name: client_id/{n;s/value:.*/value: '$(echo "${client_id}" | sed 's/[\/&]/\\&/g')'/}" ${OUTPUT_FILE} || { echo "client_id の置換に失敗しました"; exit 1; }
-
-      # 置換後の内容を表示
+      sed -i "/name: tenant_id/{n;s/value:.*/value: '$(tenant_id)'/}" ${OUTPUT_FILE} || { echo "tenant_id の置換に失敗しました"; exit 1; }
+      sed -i "/name: client_id/{n;s/value:.*/value: '$(client_id)'/}" ${OUTPUT_FILE} || { echo "client_id の置換に失敗しました"; exit 1; }
       echo "置換後のファイル内容:"
       cat ${OUTPUT_FILE}
     displayName: 'YAMLファイルを置換'
 
-  # 置換後のファイルをartifactとして保存
   - task: PublishBuildArtifacts@1
     inputs:
       PathtoPublish: '$(OUTPUT_FILE)'
