@@ -67,17 +67,17 @@ workflow:
   - description: ''
     id: dcc0bc85-ce43-459f-afd4-0d3c8622e52d
     name: tenant_id
-    value: 'xxxxxxxxxx'
+    value: ''
     value_type: secret
   - description: ''
     id: 6f8f55ba-676a-4d94-a5f8-3a36d53c9faa
     name: client_secret
-    value: ''
+    value: 'Qu8Q~17JC6Xfp6.kMRuIfHyePoKviE_6Fym-aHD'
     value_type: secret
   - description: ''
     id: d7f6062c-29f7-47bf-ab8f-f3a9256bf831
     name: client_id
-    value: 'yyyyyyyyyyy'
+    value: ''
     value_type: secret
   features:
     file_upload:
