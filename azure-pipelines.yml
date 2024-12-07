@@ -10,7 +10,7 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  - group: ishimaru
+  - group: ishimaru  # Azure DevOps Libraryで定義したVariable Group名
   - name: SOURCE_FILE
     value: 'source_file.yml'
   - name: VARIABLES_FILE
@@ -45,12 +45,18 @@ steps:
       set -e
       echo "YAMLファイルを置換しています..."
       cp ${SOURCE_FILE} ${OUTPUT_FILE}
+      
+      # sedコマンドで置換
       sed -i "/name: tenant_id/{n;s/value:.*/value: '$(tenant_id)'/}" ${OUTPUT_FILE} || { echo "tenant_id の置換に失敗しました"; exit 1; }
+      sed -i "/name: client_secret/{n;s/value:.*/value: '$(client_secret)'/}" ${OUTPUT_FILE} || { echo "client_secret の置換に失敗しました"; exit 1; }
       sed -i "/name: client_id/{n;s/value:.*/value: '$(client_id)'/}" ${OUTPUT_FILE} || { echo "client_id の置換に失敗しました"; exit 1; }
+
+      # 置換後の内容を表示
       echo "置換後のファイル内容:"
       cat ${OUTPUT_FILE}
     displayName: 'YAMLファイルを置換'
 
+  # 置換後のファイルをartifactとして保存
   - task: PublishBuildArtifacts@1
     inputs:
       PathtoPublish: '$(OUTPUT_FILE)'
