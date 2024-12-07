@@ -4,7 +4,7 @@ trigger:
       - main  # mainブランチが変更されたときにパイプラインを実行
   paths:
     include:
-      - source_file.yml  # source_file.ymlが変更された場合にのみ実行
+      - variables.yml  # variables.ymlが変更された場合にのみ実行
 
 pool:
   vmImage: 'ubuntu-latest'  # Linuxエージェントを使用
@@ -13,24 +13,26 @@ variables:
   - group: ishimaru  # Azure DevOps Libraryで定義したVariable Group名
   - name: SOURCE_FILE
     value: 'source_file.yml'  # 元のYAMLファイル
+  - name: VARIABLES_FILE
+    value: 'variables.yml'  # 置換する値が記載されているファイル
   - name: OUTPUT_FILE
     value: 'replaced_file.yml'  # 置換後の出力ファイル
 
 steps:
   - checkout: self  # GitHubリポジトリをチェックアウト
 
-  # tenant_id と client_id を抽出
+  # variables.yml から tenant_id と client_id を抽出
   - script: |
       set -e
-      echo "置換対象ファイルから変数を抽出しています..."
-      TENANT_ID=$(grep -A 1 'name: tenant_id' ${SOURCE_FILE} | grep 'value:' | awk '{print $2}' | tr -d "'")
-      CLIENT_ID=$(grep -A 1 'name: client_id' ${SOURCE_FILE} | grep 'value:' | awk '{print $2}' | tr -d "'")
+      echo "variables.yml から変数を抽出しています..."
+      TENANT_ID=$(grep 'tenant_id' ${VARIABLES_FILE} | awk '{print $2}' | tr -d "'")
+      CLIENT_ID=$(grep 'client_id' ${VARIABLES_FILE} | awk '{print $2}' | tr -d "'")
       echo "抽出された tenant_id: ${TENANT_ID}"
       echo "抽出された client_id: ${CLIENT_ID}"
       # 環境変数として設定
       echo "##vso[task.setvariable variable=tenant_id]${TENANT_ID}"
       echo "##vso[task.setvariable variable=client_id]${CLIENT_ID}"
-    displayName: 'tenant_id と client_id を抽出'
+    displayName: 'variables.yml から tenant_id と client_id を抽出'
 
   # YAMLファイルの置換処理
   - script: |
@@ -47,7 +49,7 @@ steps:
   # 置換後のファイルをartifactとして保存
   - task: PublishBuildArtifacts@1
     inputs:
-      PathtoPublish: '${OUTPUT_FILE}'  # 置換後のファイル
+      PathtoPublish: '$(OUTPUT_FILE)'  # 置換後のファイル
       ArtifactName: 'replaced-files'  # artifact名
       publishLocation: 'Container'  # Artifactの保存先
     displayName: 'Artifactとして置換後のファイルを保存'

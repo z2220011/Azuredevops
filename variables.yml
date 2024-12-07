@@ -1,0 +1,5 @@
+variables:
+  - name: tenant_id
+    value: 'new_tenant_id_value'
+  - name: client_id
+    value: 'new_client_id_value'
