@@ -2,4 +2,4 @@ variables:
   - name: tenant_id
     value: 'Hello, World!'
   - name: client_id
-    value: 'Hello, AWS!'
+    value: 'Hello, AW!'

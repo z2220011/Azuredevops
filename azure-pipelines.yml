@@ -1,36 +1,30 @@
 trigger:
   branches:
     include:
-      - main  # mainブランチが変更されたときにパイプラインを実行
+      - main
   paths:
     include:
-      - variables.yml  # variables.ymlが変更された場合にのみ実行
+      - variables.yml
 
 pool:
-  vmImage: 'ubuntu-latest'  # Linuxエージェントを使用
+  vmImage: 'ubuntu-latest'
 
 variables:
-  - group: ishimaru  # Azure DevOps Libraryで定義したVariable Group名
   - name: SOURCE_FILE
-    value: 'source_file.yml'  # 元のYAMLファイル
+    value: 'source_file.yml'
   - name: VARIABLES_FILE
-    value: 'variables.yml'  # 置換する値が記載されているファイル
+    value: 'variables.yml'
   - name: OUTPUT_FILE
-    value: 'replaced_file.yml'  # 置換後の出力ファイル
+    value: 'replaced_file.yml'
 
 steps:
-  # GitHubリポジトリをチェックアウト
   - checkout: self
 
-  # サーバのIPアドレスを表示
+  # デバッグ: variables.yml の内容を確認
   - script: |
-      set -e
-      echo "エージェントのIPアドレスを取得しています..."
-      echo "パブリックIPアドレス:"
-      curl -s http://checkip.amazonaws.com || echo "パブリックIPアドレスを取得できませんでした"
-      echo "プライベートIPアドレス:"
-      ip addr show | grep 'inet ' | grep -v '127.0.0.1' | awk '{print $2}' || echo "プライベートIPアドレスを取得できませんでした"
-    displayName: 'エージェントのIPアドレスを表示'
+      echo "variables.yml の内容を確認:"
+      cat ${VARIABLES_FILE}
+    displayName: 'variables.yml のデバッグ'
 
   # variables.yml から tenant_id と client_id を抽出
   - script: |
@@ -38,10 +32,10 @@ steps:
       echo "variables.yml から変数を抽出しています..."
       
       # tenant_id と client_id を抽出
-      TENANT_ID=$(grep 'name: tenant_id' -A 1 ${VARIABLES_FILE} | grep 'value:' | awk '{print $2}' | tr -d "'")
-      CLIENT_ID=$(grep 'name: client_id' -A 1 ${VARIABLES_FILE} | grep 'value:' | awk '{print $2}' | tr -d "'")
+      TENANT_ID=$(awk '/name: tenant_id/ {getline; print $2}' ${VARIABLES_FILE} | tr -d "'")
+      CLIENT_ID=$(awk '/name: client_id/ {getline; print $2}' ${VARIABLES_FILE} | tr -d "'")
       
-      # 確認のため表示
+      # デバッグ用ログ
       echo "抽出された tenant_id: ${TENANT_ID}"
       echo "抽出された client_id: ${CLIENT_ID}"
       
@@ -62,7 +56,7 @@ steps:
       # ファイルコピー
       cp ${SOURCE_FILE} ${OUTPUT_FILE}
       
-      # sed で変数を置換 (エスケープして安全に処理)
+      # sed で変数を置換
       sed -i "/name: tenant_id/{n;s/value:.*/value: '$(echo "${tenant_id}" | sed 's/[\/&]/\\&/g')'/}" ${OUTPUT_FILE} || { echo "tenant_id の置換に失敗しました"; exit 1; }
       sed -i "/name: client_id/{n;s/value:.*/value: '$(echo "${client_id}" | sed 's/[\/&]/\\&/g')'/}" ${OUTPUT_FILE} || { echo "client_id の置換に失敗しました"; exit 1; }
 
@@ -74,7 +68,7 @@ steps:
   # 置換後のファイルをartifactとして保存
   - task: PublishBuildArtifacts@1
     inputs:
-      PathtoPublish: '$(OUTPUT_FILE)'  # 置換後のファイル
-      ArtifactName: 'replaced-files'  # artifact名
-      publishLocation: 'Container'  # Artifactの保存先
+      PathtoPublish: '$(OUTPUT_FILE)'
+      ArtifactName: 'replaced-files'
+      publishLocation: 'Container'
     displayName: 'Artifactとして置換後のファイルを保存'
