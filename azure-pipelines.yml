@@ -19,16 +19,22 @@ variables:
     value: 'replaced_file.yml'  # 置換後の出力ファイル
 
 steps:
-  - checkout: self  # GitHubリポジトリをチェックアウト
+  # GitHubリポジトリをチェックアウト
+  - checkout: self
 
   # variables.yml から tenant_id と client_id を抽出
   - script: |
       set -e
       echo "variables.yml から変数を抽出しています..."
-      TENANT_ID=$(grep 'tenant_id' ${VARIABLES_FILE} | awk '{print $2}' | tr -d "'")
-      CLIENT_ID=$(grep 'client_id' ${VARIABLES_FILE} | awk '{print $2}' | tr -d "'")
+      
+      # tenant_id と client_id を抽出
+      TENANT_ID=$(grep 'name: tenant_id' -A 1 ${VARIABLES_FILE} | grep 'value:' | awk '{print $2}' | tr -d "'")
+      CLIENT_ID=$(grep 'name: client_id' -A 1 ${VARIABLES_FILE} | grep 'value:' | awk '{print $2}' | tr -d "'")
+      
+      # 確認のため表示
       echo "抽出された tenant_id: ${TENANT_ID}"
       echo "抽出された client_id: ${CLIENT_ID}"
+      
       # 環境変数として設定
       echo "##vso[task.setvariable variable=tenant_id]${TENANT_ID}"
       echo "##vso[task.setvariable variable=client_id]${CLIENT_ID}"
@@ -38,12 +44,17 @@ steps:
   - script: |
       set -e
       echo "YAMLファイルを置換しています..."
-      cp ${SOURCE_FILE} ${OUTPUT_FILE}  # 元ファイルをコピー
-      sed -i "/name: tenant_id/{n;s/value:.*/value: '${tenant_id}'/}" ${OUTPUT_FILE} || { echo "tenant_id の置換に失敗しました"; exit 1; }
-      sed -i "/name: client_secret/{n;s/value:.*/value: '$(client_secret)'/}" ${OUTPUT_FILE} || { echo "client_secret の置換に失敗しました"; exit 1; }
-      sed -i "/name: client_id/{n;s/value:.*/value: '${client_id}'/}" ${OUTPUT_FILE} || { echo "client_id の置換に失敗しました"; exit 1; }
+      
+      # コピー元ファイルを新しい出力ファイルにコピー
+      cp ${SOURCE_FILE} ${OUTPUT_FILE}
+      
+      # sedコマンドで置換
+      sed -i "/name: tenant_id/{n;s/value:.*/value: '$(tenant_id)'/}" ${OUTPUT_FILE} || { echo "tenant_id の置換に失敗しました"; exit 1; }
+      sed -i "/name: client_id/{n;s/value:.*/value: '$(client_id)'/}" ${OUTPUT_FILE} || { echo "client_id の置換に失敗しました"; exit 1; }
+
+      # 置換後の内容を表示
       echo "置換後のファイル内容:"
-      cat ${OUTPUT_FILE}  # 置換後の内容を表示
+      cat ${OUTPUT_FILE}
     displayName: 'YAMLファイルを置換'
 
   # 置換後のファイルをartifactとして保存
