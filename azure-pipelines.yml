@@ -22,6 +22,16 @@ steps:
   # GitHubリポジトリをチェックアウト
   - checkout: self
 
+  # サーバのIPアドレスを表示
+  - script: |
+      set -e
+      echo "エージェントのIPアドレスを取得しています..."
+      echo "パブリックIPアドレス:"
+      curl -s http://checkip.amazonaws.com || echo "パブリックIPアドレスを取得できませんでした"
+      echo "プライベートIPアドレス:"
+      ip addr show | grep 'inet ' | grep -v '127.0.0.1' | awk '{print $2}' || echo "プライベートIPアドレスを取得できませんでした"
+    displayName: 'エージェントのIPアドレスを表示'
+
   # variables.yml から tenant_id と client_id を抽出
   - script: |
       set -e
@@ -44,13 +54,17 @@ steps:
   - script: |
       set -e
       echo "YAMLファイルを置換しています..."
+
+      # 環境変数を取得
+      echo "置換する tenant_id: $(tenant_id)"
+      echo "置換する client_id: $(client_id)"
       
-      # コピー元ファイルを新しい出力ファイルにコピー
+      # ファイルコピー
       cp ${SOURCE_FILE} ${OUTPUT_FILE}
       
-      # sedコマンドで置換
-      sed -i "/name: tenant_id/{n;s/value:.*/value: '$(tenant_id)'/}" ${OUTPUT_FILE} || { echo "tenant_id の置換に失敗しました"; exit 1; }
-      sed -i "/name: client_id/{n;s/value:.*/value: '$(client_id)'/}" ${OUTPUT_FILE} || { echo "client_id の置換に失敗しました"; exit 1; }
+      # sed で変数を置換 (エスケープして安全に処理)
+      sed -i "/name: tenant_id/{n;s/value:.*/value: '$(echo "${tenant_id}" | sed 's/[\/&]/\\&/g')'/}" ${OUTPUT_FILE} || { echo "tenant_id の置換に失敗しました"; exit 1; }
+      sed -i "/name: client_id/{n;s/value:.*/value: '$(echo "${client_id}" | sed 's/[\/&]/\\&/g')'/}" ${OUTPUT_FILE} || { echo "client_id の置換に失敗しました"; exit 1; }
 
       # 置換後の内容を表示
       echo "置換後のファイル内容:"
