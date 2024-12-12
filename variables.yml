@@ -2,4 +2,4 @@ variables:
   - name: tenant_id
     value: 'abcdefghijklmn'
   - name: client_id
-    value: 'HelloAWS!'
+    value: 'HelloAzure!'
