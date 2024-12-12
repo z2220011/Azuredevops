@@ -7,9 +7,9 @@ environment_variables:
   - description: ''
     id: 6f8f55ba-676a-4d94-a5f8-3a36d53c9faa
     name: client_secret
-    value: ''
+    value: 'test'
     value_type: secret
   - description: ''
     id: d7f6062c-29f7-47bf-ab8f-f3a9256bf831
     name: client_id
-    value: ''
+    value: 'test'
